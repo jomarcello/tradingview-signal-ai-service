@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 # Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
 
 class SignalRequest(BaseModel):
     instrument: str
