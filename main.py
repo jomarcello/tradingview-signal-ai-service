@@ -19,6 +19,40 @@ app = FastAPI()
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
 
+SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided trading signal details into a clear, easy-to-read message.
+
+Your message should follow this format:
+
+🚨 *New Trading Signal* 🚨
+
+*Instrument:* [instrument]
+*Action:* [BUY/SELL] 📈/📉
+
+*Entry Price:* [price]
+*Stop Loss:* [price] 🛑
+*Take Profit:* [price] 🎯
+
+*Timeframe:* [timeframe]
+*Strategy:* [strategy]
+
+-------------------
+
+*Risk Management:*
+• Position size: 1-2% max
+• Use proper stop loss
+• Follow your trading plan
+
+-------------------
+
+🤖 *SigmaPips AI Verdict:*
+[2-3 lines explaining why this trade setup looks promising, focusing on technical aspects and risk/reward ratio]
+
+Remember:
+- Keep it concise and professional
+- Use emojis sparingly
+- Format numbers with 4 decimals for forex (e.g., 1.0950)
+- Add the AI verdict only at the end"""
+
 class SignalRequest(BaseModel):
     instrument: str
     direction: str
@@ -52,7 +86,7 @@ def format_signal(request: SignalRequest):
             model="gpt-4-0125-preview",
             messages=[{
                 "role": "system",
-                "content": "You are a professional trading signal formatter. Your job is to take raw trading signals and format them into clear, engaging messages for subscribers."
+                "content": SYSTEM_PROMPT
             }, {
                 "role": "user",
                 "content": prompt
