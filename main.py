@@ -29,7 +29,7 @@ class SignalRequest(BaseModel):
     strategy: Optional[str]
 
 @app.post("/format-signal")
-async def format_signal(request: SignalRequest):
+def format_signal(request: SignalRequest):
     """Format a trading signal into a clear message using OpenAI."""
     try:
         # Create a prompt for the signal formatting
@@ -48,7 +48,7 @@ async def format_signal(request: SignalRequest):
         Format the message to be engaging and easy to read."""
 
         # Call OpenAI API
-        response = await client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4-0125-preview",
             messages=[{
                 "role": "system",
