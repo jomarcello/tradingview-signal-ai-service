@@ -152,6 +152,34 @@ async def format_signal(request: SignalRequest):
         formatted_message = response.choices[0].message.content.strip()
         formatted_message = formatted_message.replace("```html", "").replace("```", "").strip()
         
+        # Ensure all HTML tags are properly closed
+        open_tags = []
+        parts = formatted_message.split("<")
+        result = [parts[0]]  # Add text before first tag
+        
+        for part in parts[1:]:
+            if not part:
+                continue
+                
+            # Handle closing tags
+            if part.startswith("/"):
+                tag = part[1:].split(">")[0]
+                if open_tags and open_tags[-1] == tag:
+                    open_tags.pop()
+                result.append("<" + part)
+            # Handle opening tags
+            else:
+                tag = part.split(">")[0].split()[0]
+                if tag in ["b", "i", "u", "s", "code", "pre"]:  # Safe HTML tags
+                    open_tags.append(tag)
+                result.append("<" + part)
+        
+        # Close any remaining open tags
+        for tag in reversed(open_tags):
+            result.append(f"</{tag}>")
+            
+        formatted_message = "".join(result)
+        
         return {
             "status": "success",
             "formatted_message": formatted_message
