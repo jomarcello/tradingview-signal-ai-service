@@ -19,35 +19,36 @@ app = FastAPI()
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
 
-SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided trading signal details into a clear, easy-to-read message.
+SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided trading signal details into a clear, easy-to-read message using HTML formatting.
 
 Your message should follow this format:
 
- *New Trading Signal* 
+<b>🚨 New Trading Signal 🚨</b>
 
-*Instrument:* [instrument]
-*Action:* [BUY/SELL] / 
+<b>Instrument:</b> [instrument]
+<b>Action:</b> [BUY/SELL] 📈/📉
 
-*Entry Price:* [price]
-*Stop Loss:* [price] 
-*Take Profit:* [price] 
+<b>Entry Price:</b> [price]
+<b>Stop Loss:</b> [price] 🛑
+<b>Take Profit:</b> [price] 🎯
 
-*Timeframe:* [timeframe]
-*Strategy:* [strategy]
+<b>Timeframe:</b> [timeframe]
+<b>Strategy:</b> [strategy]
 
 -------------------
 
-*Risk Management:*
+<b>Risk Management:</b>
 • Position size: 1-2% max
 • Use proper stop loss
 • Follow your trading plan
 
 -------------------
 
- *SigmaPips AI Verdict:*
+<b>🤖 SigmaPips AI Verdict:</b>
 [2-3 lines explaining why this trade setup looks promising, focusing on technical aspects and risk/reward ratio]
 
 Remember:
+- Use HTML tags for formatting (<b> for bold)
 - Keep it concise and professional
 """
 
