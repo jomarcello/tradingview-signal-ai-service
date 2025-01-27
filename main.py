@@ -23,10 +23,10 @@ SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided tradi
 
 Your message should follow this format:
 
-<b> New Trading Signal </b>
+<b>🚨 New Trading Signal 🚨</b>
 
 <b>Instrument:</b> [instrument]
-<b>Action:</b> [BUY/SELL] / 
+<b>Action:</b> [BUY/SELL]
 
 <b>Entry Price:</b> [price]
 <b>Stop Loss:</b> [price] 
@@ -44,12 +44,14 @@ Your message should follow this format:
 
 -------------------
 
-<b> SigmaPips AI Verdict:</b>
+<b>🤖 SigmaPips AI Verdict:</b>
 [2-3 lines explaining why this trade setup looks promising, focusing on technical aspects and risk/reward ratio]
 
 Remember:
 - Use HTML tags for formatting (<b> for bold)
 - Keep it concise and professional
+- Make sure all HTML tags are properly closed
+- Do not use any special characters that might break HTML formatting
 """
 
 ANALYSIS_PROMPT = """You are a trading signal analyzer. Analyze the provided trading signal and provide a brief but insightful verdict.
