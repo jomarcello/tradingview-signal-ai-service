@@ -23,14 +23,14 @@ SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided tradi
 
 Your message should follow this format:
 
-<b>🚨 New Trading Signal 🚨</b>
+<b> New Trading Signal </b>
 
 <b>Instrument:</b> [instrument]
-<b>Action:</b> [BUY/SELL] 📈/📉
+<b>Action:</b> [BUY/SELL] / 
 
 <b>Entry Price:</b> [price]
-<b>Stop Loss:</b> [price] 🛑
-<b>Take Profit:</b> [price] 🎯
+<b>Stop Loss:</b> [price] 
+<b>Take Profit:</b> [price] 
 
 <b>Timeframe:</b> [timeframe]
 <b>Strategy:</b> [strategy]
@@ -44,7 +44,7 @@ Your message should follow this format:
 
 -------------------
 
-<b>🤖 SigmaPips AI Verdict:</b>
+<b> SigmaPips AI Verdict:</b>
 [2-3 lines explaining why this trade setup looks promising, focusing on technical aspects and risk/reward ratio]
 
 Remember:
@@ -146,7 +146,9 @@ async def format_signal(request: SignalRequest):
             max_tokens=500
         )
         
+        # Remove any markdown code blocks and 'html' text
         formatted_message = response.choices[0].message.content.strip()
+        formatted_message = formatted_message.replace("```html", "").replace("```", "").strip()
         
         return {
             "status": "success",
