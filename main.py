@@ -23,14 +23,14 @@ SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided tradi
 
 Your message should follow this format:
 
-🚨 *New Trading Signal* 🚨
+ *New Trading Signal* 
 
 *Instrument:* [instrument]
-*Action:* [BUY/SELL] 📈/📉
+*Action:* [BUY/SELL] / 
 
 *Entry Price:* [price]
-*Stop Loss:* [price] 🛑
-*Take Profit:* [price] 🎯
+*Stop Loss:* [price] 
+*Take Profit:* [price] 
 
 *Timeframe:* [timeframe]
 *Strategy:* [strategy]
@@ -44,65 +44,117 @@ Your message should follow this format:
 
 -------------------
 
-🤖 *SigmaPips AI Verdict:*
+ *SigmaPips AI Verdict:*
 [2-3 lines explaining why this trade setup looks promising, focusing on technical aspects and risk/reward ratio]
 
 Remember:
 - Keep it concise and professional
-- Use emojis sparingly
-- Format numbers with 4 decimals for forex (e.g., 1.0950)
-- Add the AI verdict only at the end"""
+"""
+
+ANALYSIS_PROMPT = """You are a trading signal analyzer. Analyze the provided trading signal and provide a brief but insightful verdict.
+
+Focus on:
+1. Technical aspects of the setup
+2. Risk/reward ratio
+3. Key levels and potential market behavior
+
+Your verdict should be 2-3 lines long and professional.
+"""
 
 class SignalRequest(BaseModel):
     instrument: str
     direction: str
-    entry_price: float
-    stop_loss: float
-    take_profit: float
-    timeframe: Optional[str]
-    strategy: Optional[str]
+    entry_price: str
+    stop_loss: str
+    take_profit: str
+    timeframe: Optional[str] = None
+    strategy: Optional[str] = None
+    timestamp: Optional[str] = None
+
+@app.post("/analyze-signal")
+async def analyze_signal(request: SignalRequest):
+    """Analyze a trading signal using AI"""
+    try:
+        # Calculate risk/reward ratio
+        entry = float(request.entry_price)
+        sl = float(request.stop_loss)
+        tp = float(request.take_profit)
+        
+        risk = abs(entry - sl)
+        reward = abs(tp - entry)
+        rr_ratio = round(reward / risk, 2) if risk > 0 else 0
+        
+        # Create analysis prompt
+        prompt = f"""Signal Details:
+- Instrument: {request.instrument}
+- Direction: {request.direction.upper()}
+- Entry: {request.entry_price}
+- Stop Loss: {request.stop_loss}
+- Take Profit: {request.take_profit}
+- Risk/Reward Ratio: {rr_ratio}
+- Timeframe: {request.timeframe or 'Not specified'}
+- Strategy: {request.strategy or 'Not specified'}
+
+Please analyze this trade setup and provide your verdict."""
+
+        # Get AI analysis
+        response = client.chat.completions.create(
+            model="gpt-4-1106-preview",
+            messages=[
+                {"role": "system", "content": ANALYSIS_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=150
+        )
+        
+        verdict = response.choices[0].message.content.strip()
+        
+        return {
+            "status": "success",
+            "verdict": verdict,
+            "risk_reward_ratio": rr_ratio
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing signal: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error analyzing signal: {str(e)}")
 
 @app.post("/format-signal")
-def format_signal(request: SignalRequest):
-    """Format a trading signal into a clear message using OpenAI."""
+async def format_signal(request: SignalRequest):
+    """Format a trading signal into a clear message using OpenAI"""
     try:
-        # Create a prompt for the signal formatting
-        prompt = f"""Format this trading signal into a clear, professional message for subscribers.
-        Include all relevant information and add emoji where appropriate.
-        
-        Signal Data:
-        - Instrument: {request.instrument}
-        - Direction: {request.direction}
-        - Entry Price: {request.entry_price}
-        - Stop Loss: {request.stop_loss}
-        - Take Profit: {request.take_profit}
-        - Timeframe: {request.timeframe or "Unknown"}
-        - Strategy: {request.strategy or "Custom Strategy"}
-        
-        Format the message to be engaging and easy to read."""
+        # Create the prompt
+        prompt = f"""Please format this trading signal:
+- Instrument: {request.instrument}
+- Direction: {request.direction.upper()}
+- Entry Price: {request.entry_price}
+- Stop Loss: {request.stop_loss}
+- Take Profit: {request.take_profit}
+- Timeframe: {request.timeframe or 'Not specified'}
+- Strategy: {request.strategy or 'Not specified'}"""
 
-        # Call OpenAI API
+        # Get AI response
         response = client.chat.completions.create(
-            model="gpt-4-0125-preview",
-            messages=[{
-                "role": "system",
-                "content": SYSTEM_PROMPT
-            }, {
-                "role": "user",
-                "content": prompt
-            }],
+            model="gpt-4-1106-preview",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
             temperature=0.7,
             max_tokens=500
         )
         
-        formatted_message = response.choices[0].message.content
-        logger.info(f"Successfully formatted signal for {request.instrument}")
+        formatted_message = response.choices[0].message.content.strip()
         
-        return {"formatted_message": formatted_message}
-            
+        return {
+            "status": "success",
+            "formatted_message": formatted_message
+        }
+        
     except Exception as e:
         logger.error(f"Error formatting signal: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error formatting signal: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
