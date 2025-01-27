@@ -19,40 +19,29 @@ app = FastAPI()
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
 
-SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided trading signal details into a clear, easy-to-read message using HTML formatting.
+SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided trading signal details into a clear, easy-to-read message using Telegram-native formatting.
 
-Your message should follow this format:
+Your message should follow this exact format:
 
-<b>🚨 New Trading Signal 🚨</b>
+📈 **[INSTRUMENT] [ACTION] Signal** ([TIMEFRAME])
 
-<b>Instrument:</b> [instrument]
-<b>Action:</b> [BUY/SELL]
+Entry Price: [PRICE]
+✅ Take Profit: [TP]
+🛑 Stop Loss: [SL]
 
-<b>Entry Price:</b> [price]
-<b>Stop Loss:</b> [price] 
-<b>Take Profit:</b> [price] 
-
-<b>Timeframe:</b> [timeframe]
-<b>Strategy:</b> [strategy]
+⚙️ Strategy: [STRATEGY]
 
 -------------------
 
-<b>Risk Management:</b>
+⚠️ Risk Management:
 • Position size: 1-2% max
 • Use proper stop loss
 • Follow your trading plan
 
 -------------------
 
-<b>🤖 SigmaPips AI Verdict:</b>
-[2-3 lines explaining why this trade setup looks promising, focusing on technical aspects and risk/reward ratio]
-
-Remember:
-- Use HTML tags for formatting (<b> for bold)
-- Keep it concise and professional
-- Make sure all HTML tags are properly closed
-- Do not use any special characters that might break HTML formatting
-"""
+🤖 SigmaPips AI Verdict:
+[2-3 lines explaining why this trade setup looks promising, focusing on technical aspects and risk/reward ratio]"""
 
 ANALYSIS_PROMPT = """You are a trading signal analyzer. Analyze the provided trading signal and provide a brief but insightful verdict.
 
