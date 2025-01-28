@@ -1,10 +1,11 @@
 import os
 import logging
-from typing import Optional
+from typing import Optional, List, Dict
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
+import httpx
 
 # Load environment variables
 load_dotenv()
@@ -17,30 +18,30 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 # Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 SYSTEM_PROMPT = """You are a trading signal formatter. Format the provided trading signal details into a clear, easy-to-read message using Telegram-native formatting.
 
 Your message should follow this exact format:
 
-📈 **[INSTRUMENT] [ACTION] Signal** ([TIMEFRAME])
+**[INSTRUMENT] [ACTION] Signal** ([TIMEFRAME])
 
 Entry Price: [PRICE]
-✅ Take Profit: [TP]
-🛑 Stop Loss: [SL]
+Take Profit: [TP]
+Stop Loss: [SL]
 
-⚙️ Strategy: [STRATEGY]
+Strategy: [STRATEGY]
 
 -------------------
 
-⚠️ Risk Management:
+Risk Management:
 • Position size: 1-2% max
 • Use proper stop loss
 • Follow your trading plan
 
 -------------------
 
-🤖 SigmaPips AI Verdict:
+SigmaPips AI Verdict:
 [2-3 lines explaining why this trade setup looks promising, focusing on technical aspects and risk/reward ratio]"""
 
 ANALYSIS_PROMPT = """You are a trading signal analyzer. Analyze the provided trading signal and provide a brief but insightful verdict.
@@ -53,6 +54,28 @@ Focus on:
 Your verdict should be 2-3 lines long and professional.
 """
 
+MARKET_SENTIMENT_PROMPT = """You are a forex market analyst. Analyze the provided news articles and create a comprehensive market sentiment analysis for the given trading instrument.
+
+Your analysis should follow this exact format:
+
+Market Impact Analysis
+• ECB's latest decision: [Key points from recent central bank decisions]
+• Market implications: [How this affects the currency pair]
+• Current trend: [Current market behavior and notable changes]
+
+Market Sentiment
+• Direction: [Bullish/Bearish towards the instrument]
+• Strength: [Strong/Moderate/Weak]
+• Key driver: [Main factor driving the sentiment]
+
+Trading Implications
+• Short-term outlook: [What to expect in the next few hours/days]
+• Risk assessment: [Current market risks]
+• Key levels: [Important support/resistance levels to watch]
+
+Risk Factors
+• [List 2-3 key events or factors that could impact the trade]"""
+
 class SignalRequest(BaseModel):
     instrument: str
     direction: str
@@ -62,6 +85,10 @@ class SignalRequest(BaseModel):
     timeframe: Optional[str] = None
     strategy: Optional[str] = None
     timestamp: Optional[str] = None
+
+class NewsRequest(BaseModel):
+    instrument: str
+    articles: List[Dict[str, str]]
 
 @app.post("/analyze-signal")
 async def analyze_signal(request: SignalRequest):
@@ -177,6 +204,83 @@ async def format_signal(request: SignalRequest):
     except Exception as e:
         logger.error(f"Error formatting signal: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error formatting signal: {str(e)}")
+
+@app.post("/analyze-news")
+async def analyze_news(request: NewsRequest):
+    """Analyze news articles and generate market sentiment"""
+    try:
+        # If no articles provided, fetch them
+        if not request.articles:
+            articles = await fetch_news_articles(request.instrument)
+            if not articles:
+                raise HTTPException(status_code=400, detail="Could not fetch news articles")
+        else:
+            articles = request.articles
+
+        # Format articles for analysis
+        articles_text = "\n\n".join([
+            f"Title: {article.get('title', '')}\n"
+            f"Content: {article.get('content', '')}\n"
+            f"Date: {article.get('date', '')}"
+            for article in articles[:3]  # Only analyze last 3 articles
+        ])
+
+        # Get AI analysis
+        response = client.chat.completions.create(
+            model="gpt-4-1106-preview",
+            messages=[
+                {"role": "system", "content": MARKET_SENTIMENT_PROMPT},
+                {"role": "user", "content": f"Analyze these news articles for {request.instrument}:\n\n{articles_text}"}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+
+        analysis = response.choices[0].message.content
+
+        return {
+            "status": "success",
+            "instrument": request.instrument,
+            "sentiment": analysis
+        }
+
+    except Exception as e:
+        logger.error(f"Error analyzing news: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def fetch_news_articles(instrument: str) -> List[Dict[str, str]]:
+    """Fetch recent news articles for the given instrument"""
+    try:
+        # Extract currencies from instrument (e.g., EURUSD -> EUR,USD)
+        base = instrument[:3]
+        quote = instrument[3:] if len(instrument) > 3 else None
+
+        # Use a news API to fetch articles
+        async with httpx.AsyncClient() as client:
+            # Example using marketaux.com API (you'll need an API key)
+            api_key = os.getenv("MARKETAUX_API_KEY")
+            params = {
+                "api_token": api_key,
+                "symbols": f"{base},{quote}" if quote else base,
+                "limit": 3,
+                "language": "en"
+            }
+            response = await client.get("https://api.marketaux.com/v1/news/all", params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                return [{
+                    "title": article["title"],
+                    "content": article["description"],
+                    "date": article["published_at"]
+                } for article in data["data"]]
+            else:
+                logger.error(f"News API error: {response.text}")
+                return []
+
+    except Exception as e:
+        logger.error(f"Error fetching news: {str(e)}")
+        return []
 
 if __name__ == "__main__":
     import uvicorn
